@@ -11,12 +11,10 @@ from __future__ import annotations
 from typing import Any
 from . import abstracts
 from . import formatS
-from . import formatNPSL
 from .utils import fetch
 
-IMPLEMENTATIONS: dict[str, type[formatS.Study] | type[formatNPSL.Study]] = {
+IMPLEMENTATIONS: dict[str, type[formatS.Study]] = {
     "S": formatS.Study,
-    "NPSL": formatNPSL.Study,
 }
 
 
@@ -25,7 +23,7 @@ def get(
     download_dir: str = "./data",
     quiet: bool = False,
     deposition_version: int | None = None,
-) -> formatS.Study | formatNPSL.Study:
+) -> formatS.Study:
     """Create and return a format-specific Study instance.
 
     Args:
