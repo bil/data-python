@@ -277,8 +277,8 @@ class SpanSet:
         """SpanArray instantiation class."""
 
     def __init__(
-        self, spans: Iterable[Span], **kwargs: Any
-    ) -> None:  # pylint: disable=unused-argument
+        self, spans: Iterable[Span], **kwargs: Any  # pylint: disable=unused-argument
+    ) -> None:
         """Initialize SpanSet.
 
         Args:
