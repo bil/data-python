@@ -215,8 +215,7 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# LLM
-.gemini/
-
-# Notebook output
+notebook
 tmp
+data
+.gemini

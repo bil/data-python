@@ -1,7 +1,15 @@
-numpy
+# --- Core Public API (bil.api) ---
+numpy < 2.0.0
 pandas
 h5py
 requests
+urllib3
 PyYAML
 tqdm
 cloudpickle
+
+# --- Development & Testing ---
+python-dotenv
+pytest
+pytest-mock
+matplotlib
