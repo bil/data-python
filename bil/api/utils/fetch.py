@@ -7,9 +7,12 @@ scientific data from various remote endpoints (HTTPS, Rclone).
 
 from __future__ import annotations
 import subprocess
+import tempfile
+import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, TYPE_CHECKING
+
 
 import requests
 import yaml
@@ -18,7 +21,8 @@ from urllib3.util.retry import Retry
 from tqdm import tqdm
 
 if TYPE_CHECKING:
-    from ..abstracts import StudyMixin
+    # Circular otherwise; only need this for typing.
+    from ..abstracts import HeadH5Study
 
 # HDF5 Cache settings
 H5CACHE_RDCC_NBYTES = 200 * 1024 * 1024  # 200MB
@@ -95,7 +99,7 @@ class Fetcher(ABC):
         Returns: list of absolute paths to local files.
         """
 
-    def get_data(self, study: StudyMixin, *names: str) -> list[Path]:
+    def get_data(self, study: HeadH5Study, *names: str) -> list[Path]:
         """Semantic data fetcher using data_paths from the study.
 
         Args:
@@ -108,7 +112,7 @@ class Fetcher(ABC):
         Raises:
             FileNotFoundError: If any required file is missing at source.
         """
-        files_fetch = []
+        files_fetch: list[str] = []
         for name in names:
             if hasattr(study, "has") and name in study.has:
                 continue
@@ -181,21 +185,11 @@ class FetcherHTTPS(Fetcher):
             return False
 
     def get_file(self, file_name: str) -> str:
-        """Fetch file over HTTPS with progress bar.
-
-        Args:
-            file_name: Name of the file to fetch.
-
-        Returns:
-            Absolute path to the downloaded file.
-
-        Raises:
-            FileNotFoundError: If the file cannot be downloaded.
-        """
-
+        """Fetch file over HTTPS with progress bar using tempfile atomic writes."""
         output_path = self.download_dir / file_name
         output_path.parent.mkdir(exist_ok=True, parents=True)
-        if output_path.exists():
+
+        if output_path.exists() and output_path.stat().st_size > 0:
             return str(output_path)
 
         if not self.quiet:
@@ -203,26 +197,48 @@ class FetcherHTTPS(Fetcher):
 
         url = f"{self.base_url}/{file_name}"
 
-        with self.session.get(url, stream=True, timeout=30) as response:
-            try:
-                response.raise_for_status()
-            except Exception as err:
-                raise FileNotFoundError(f"Failed to download {url}: {err}") from err
+        try:
+            # Create the temp file in the exact same directory as the target destination
+            with tempfile.NamedTemporaryFile(
+                dir=output_path.parent,
+                prefix=f".{output_path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as temp_file:
+                # Store the path so we can rename/delete it later
+                temp_path = Path(temp_file.name)
 
-            total = int(response.headers.get("content-length", 0))
-            if total == 0:
-                total = None
+                with self.session.get(url, stream=True, timeout=30) as response:
+                    response.raise_for_status()
+                    total = int(response.headers.get("content-length", 0)) or None
 
-            with open(output_path, "wb") as file_handle, tqdm(
-                total=total,
-                unit="iB",
-                unit_scale=True,
-                desc=file_name,
-                disable=self.quiet,
-            ) as pbar:
-                for chunk in response.iter_content(chunk_size=1024 * 1024):
-                    file_handle.write(chunk)
-                    pbar.update(len(chunk))
+                    with tqdm(
+                        total=total,
+                        unit="iB",
+                        unit_scale=True,
+                        desc=file_name,
+                        disable=self.quiet,
+                    ) as pbar:
+                        for chunk in response.iter_content(chunk_size=1024 * 1024):
+                            temp_file.write(chunk)
+                            pbar.update(len(chunk))
+                        # Ensure all internal buffers related to file are written to disk
+                        temp_file.flush()
+                        os.fsync(temp_file.fileno())
+
+            # Atomic replacement
+            if output_path.exists() and output_path.stat().st_size > 0:
+                # Another process beat us (for case of concurrent downloads)
+                temp_path.unlink(missing_ok=True)
+            else:
+                # Atomic swap
+                os.replace(str(temp_path), str(output_path))
+
+        except Exception as err:
+            # Clean up the temp file if the download fails
+            if "temp_path" in locals() and temp_path.exists():
+                temp_path.unlink(missing_ok=True)
+            raise FileNotFoundError(f"Failed to download {url}: {err}") from err
 
         return str(output_path)
 

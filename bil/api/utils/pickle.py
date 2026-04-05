@@ -27,6 +27,7 @@ def pickle_proof(obj: Any) -> Any:
     if isinstance(obj, abstracts.Span):
         studies = [obj.study]
     elif isinstance(obj, abstracts.StudyMixin):
+        print("STUDYMIXIN")
         studies = [obj]
     elif isinstance(obj, abstracts.SpanSet):
         studies = list({span.study for span in obj.spans})
@@ -34,10 +35,13 @@ def pickle_proof(obj: Any) -> Any:
         raise ValueError("Not a Span, Study, or SpanSet!")
 
     for study in studies:
-        if isinstance(study, abstracts.HeadH5Study) and study.head_handle is not None:
+        if hasattr(study, "head_handle") and study.head_handle is not None:
             study.head_handle.close()
             study.head_handle = None
-            study.has.discard("head")
+        if hasattr(study, "has") and isinstance(study.has, set):
+            # If opening serialized object in new context
+            # don't assume we have anything downloaded
+            study.has.clear()
     return obj
 
 

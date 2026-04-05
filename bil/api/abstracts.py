@@ -1,5 +1,5 @@
 """
-Abstract base classes and core utilities for the BIL data API.
+Abstract base classes for the BIL data API.
 """
 
 from __future__ import annotations
@@ -7,7 +7,8 @@ from __future__ import annotations
 import functools
 from abc import ABC, abstractmethod
 from functools import cached_property
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, TypeVar
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -73,7 +74,10 @@ def needs_data(*names: str) -> Callable:
     return inner
 
 
-def by_time_ms(study: Any, key: int | slice, span_cls: type["Span"]) -> "Span":
+SpanT = TypeVar("SpanT", bound="Span")
+
+
+def by_time_ms(study: "StudyMixin", key: int | slice, span_cls: type["SpanT"]) -> SpanT:
     """Standard implementation of by_time indexing in milliseconds.
 
     Args:
@@ -201,7 +205,7 @@ class Span(ABC):
         return self.stop - self.start
 
     @abstractmethod
-    def _data(self, func: Callable, **kwargs: Any) -> Any:
+    def _data(self, func: str, **kwargs: Any) -> Any:
         """Internal data retrieval."""
 
     def around(self, time_ms: int, t_before: int, t_after: int) -> "Span":
@@ -277,7 +281,7 @@ class SpanSet:
         """SpanArray instantiation class."""
 
     def __init__(
-        self, spans: Iterable[Span], **kwargs: Any  # pylint: disable=unused-argument
+        self, spans: list[Span], **kwargs: Any  # pylint: disable=unused-argument
     ) -> None:
         """Initialize SpanSet.
 
@@ -288,7 +292,7 @@ class SpanSet:
         super().__init__()
         assert all(isinstance(span, self.span_cls) for span in spans)
 
-        self._spans = list(spans)
+        self._spans = spans
         if self._spans and all(span.metadata is not None for span in spans):
             self._df = pd.DataFrame([span.metadata for span in spans])
         else:
@@ -375,7 +379,7 @@ class SpanSet:
         """
         return self.spanarray_cls(spans=spans)
 
-    def _wrap(self, func: str, *args: Any, **kwargs: Any) -> list[Any]:
+    def _wrap(self, func: str, *args: Any, **kwargs: Any) -> Iterable:
         """Execute method across all spans.
 
         Args:
@@ -385,7 +389,7 @@ class SpanSet:
 
         Returns: list of results.
         """
-        return [getattr(span, func)(*args, **kwargs) for span in self]
+        return [getattr(span, func)(*args, **kwargs) for span in iter(self)]
 
     def around(
         self, time_ms: str | int | Iterable, t_before: int, t_after: int
@@ -422,7 +426,7 @@ class SpanSet:
         Returns: list of results.
         """
         out = []
-        for span in self:
+        for span in iter(self):
             out.append(func(span, *args, **kwargs))
         return out
 
@@ -434,7 +438,7 @@ class SpanSet:
 
 
 class StudyMixin(ABC):
-    """Mix-in for scientific study interface.
+    """Mix-in for study interface.
 
     Attributes:
         study_id: Unique session identifier.
@@ -446,7 +450,7 @@ class StudyMixin(ABC):
     """
 
     # For linting purposes!
-    span_cls: type[Span]
+    # span_cls: type[Span]
 
     def __init__(
         self, study_id: str, download_dir: str, quiet: bool = False, **kwargs: Any
@@ -465,7 +469,7 @@ class StudyMixin(ABC):
         self.quiet = quiet
         self.initialized = False
         self._df: pd.DataFrame | None = None
-        self._spans: list[Span] | tuple = ()
+        self._spans: list[Span] = []
         super().__init__(**kwargs)
 
     @property
@@ -480,14 +484,14 @@ class StudyMixin(ABC):
         self._df = value
 
     @property
-    def spans(self) -> list[Span] | tuple:
+    def spans(self) -> list[Span]:
         """List of Span objects. Accessing triggers initialization."""
         if not self.initialized:
             self.initialize()
         return self._spans
 
     @spans.setter
-    def spans(self, value: list[Span] | tuple) -> None:
+    def spans(self, value: list[Span]) -> None:
         self._spans = value
 
     def __getitem__(self, key: Any) -> Any:
@@ -501,7 +505,7 @@ class StudyMixin(ABC):
         """
         if self.df is None:
             return self.by_time(key)
-        return super().__getitem__(key)
+        return super().__getitem__(key)  # type: ignore[misc]
 
     @cached_property
     @abstractmethod
@@ -534,7 +538,7 @@ class StudyMixin(ABC):
             if self._df is not None:
                 self._spans = [self._make_span(row) for _, row in self._df.iterrows()]
             else:
-                self._spans = ()
+                self._spans = []
             self.initialized = True
         return self
 
@@ -543,7 +547,7 @@ class StudyMixin(ABC):
         """Initialize trial metadata."""
 
     @abstractmethod
-    def get_data(self, *names: str) -> list[str]:
+    def get_data(self, *names: str) -> list[Path]:
         """Fetch data from remote endpoint.
 
         Args:
@@ -638,7 +642,7 @@ class HeadH5Study(StudyMixin):
             )
         return self.head_handle
 
-    def get_data(self, *names: str) -> list[str]:
+    def get_data(self, *names: str) -> list[Path]:
         """Standard fetch-and-open implementation.
 
         Args:
@@ -700,7 +704,7 @@ class PublicMixin:
             quiet=quiet,
             spans=(),
             **kwargs,
-        )
+        )  # type: ignore[call-arg]
 
     @cached_property
     def fetcher(self) -> fetch.FetcherHTTPS:
@@ -716,7 +720,7 @@ class PublicMixin:
 class ArrayMixin:
     """Mix-in for SpanSets returning numpy arrays."""
 
-    def __init__(self, spans: Iterable[Span], *args: Any, **kwargs: Any) -> None:
+    def __init__(self, spans: list[Span], *args: Any, **kwargs: Any) -> None:
         """Initialize ArrayMixin.
 
         Args:
@@ -724,14 +728,14 @@ class ArrayMixin:
             *args: Additional arguments.
             **kwargs: Additional keyword arguments.
         """
-        spans_list = list(spans)
+        spans_list = spans
         # check uniformity
         lengths = [len(span) for span in spans_list]
         if len(set(lengths)) != 1:
             raise ValueError("SpanArray requires spans of the same length")
 
         # init
-        super().__init__(spans=spans_list, *args, **kwargs)
+        super().__init__(spans=spans_list, *args, **kwargs)  # type: ignore[call-arg]
 
     def _wrap(self, func: str, *args: Any, **kwargs: Any) -> np.ndarray:
         """Wrap results into numpy array.
@@ -744,7 +748,7 @@ class ArrayMixin:
         Returns:
             Numpy array of results.
         """
-        return np.array(super()._wrap(func, *args, **kwargs))
+        return np.array(super()._wrap(func, *args, **kwargs))  # type: ignore[misc]
 
 
 class DataCatalog:

@@ -5,7 +5,7 @@ Helper functions for accessing data format B.
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Any, Iterable
 import numpy as np
 import pandas as pd
 import h5py
@@ -100,8 +100,8 @@ def df_from_h5(h5_file: h5py.File, run_id: str) -> pd.DataFrame:
     params = [key for key in h5_file.keys() if key.startswith("tp_")]
     params_short = [p[3:] for p in params]
     params_dims = [h5_file[p].shape[2] for p in params]
-    data = []
-    columns = []
+    data: list[Iterable] = []
+    columns: list[Iterable[str]] = []
     for param_full, param_short, dim in zip(params, params_short, params_dims):
         if param_short in IGNORE_PARAMS:
             continue

@@ -1,9 +1,5 @@
 """
-BIL data API package.
-
-This package provides a unified interface for accessing neuroscientific datasets
-across multiple formats (A, B, etc.). The main entry point is the Study class,
-which automatically routes requests to the correct format-specific implementation.
+BIL data API.
 """
 
 from __future__ import annotations
@@ -11,10 +7,12 @@ from __future__ import annotations
 from typing import Any
 from . import abstracts
 from . import formatS
+from . import formatNPSL
 from .utils import fetch
 
-IMPLEMENTATIONS: dict[str, type[formatS.Study]] = {
+IMPLEMENTATIONS: dict[str, type[formatS.Study] | type[formatNPSL.Study]] = {
     "S": formatS.Study,
+    "NPSL": formatNPSL.Study,
 }
 
 
@@ -23,7 +21,7 @@ def get(
     download_dir: str = "./data",
     quiet: bool = False,
     deposition_version: int | None = None,
-) -> formatS.Study:
+) -> formatS.Study | formatNPSL.Study:
     """Create and return a format-specific Study instance.
 
     Args:

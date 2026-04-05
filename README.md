@@ -18,7 +18,7 @@ Public datasets are deposited incrementally. The API contains methods for signal
 
 ## Quickstart
 
-See `doc/quickstart.ipynb` for more.
+See `demo/md/quickstart.md`.
 
 ```python
 from bil.api import get
@@ -37,5 +37,5 @@ span = study.spans[0]
 
 # Retrieve LFP data from that period of time from the Utah array in motor cortex
 # This well get deposited in my_data/U201130_01
-lfp = span.lfp(region="m1") # (96, T) ndarray
+lfp = span.lfp(region="m1")  # (96, T) ndarray
 ```

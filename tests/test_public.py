@@ -146,6 +146,9 @@ def test_pickle_utils():
     """Test custom pickling logic."""
 
     class MockStudy(StudyMixin):
+
+        has = set()
+
         @property
         def tlen(self):
             return 100
@@ -171,7 +174,9 @@ def test_pickle_utils():
             return "http://test"
 
     data = MockStudy(study_id="U", download_dir=".")
+    data.has.add("something")
     data = bil_pickle.pickle_proof(data)
+    assert not data.has
     pickled = bil_pickle.pickle_down(data)
     unpickled = bil_pickle.pickle_up(pickled)
     assert unpickled.study_id == data.study_id

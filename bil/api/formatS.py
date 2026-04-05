@@ -3,7 +3,7 @@ API implementation for data format A.
 """
 
 from __future__ import annotations
-from typing import Any
+from typing import Any, TYPE_CHECKING
 import sqlite3
 import warnings
 from functools import cached_property
@@ -15,8 +15,11 @@ import pandas as pd
 import h5py
 
 from . import abstracts
-from .abstracts import needs_data, StudyMixin
+from .abstracts import needs_data
 from .utils import subject
+
+if TYPE_CHECKING:
+    from .abstracts import StudyMixin
 
 # Channel mapping for Utah arrays, accounting for spatial orientation
 U_M1_MAP = subject.UTAH_MAP.copy()[::-1, ::-1].T
@@ -308,7 +311,7 @@ class Span(DataCatalog, abstracts.Span):
             return False
         return True
 
-    def _30k_ix(self, region: str | None = None) -> tuple[int, int]:
+    def _ix_30k(self, region: str | None = None) -> tuple[int, int]:
         """Map 1kHz millisecond indices to 30kHz sample indices.
 
         Args:
@@ -372,14 +375,14 @@ class Span(DataCatalog, abstracts.Span):
 
     def _get_30k(
         self,
-        h5_dataset: h5py.Dataset | str,
+        h5_dataset: h5py.Dataset,
         region: str | None = None,
         channel: int | None = None,
     ) -> np.ndarray:
         """Slice and return 30kHz data.
 
         Args:
-            h5_dataset: Dataset or 'raw' indicator.
+            h5_dataset: Dataset.
             region: Semantic brain region.
             channel: Specific channel index.
 
@@ -397,10 +400,10 @@ class Span(DataCatalog, abstracts.Span):
 
         if channel is not None:
             region = self.study.subject.ch_region(channel)
-            start, stop = self._30k_ix(region=region)
+            start, stop = self._ix_30k(region=region)
             return h5_dataset[channel - 1, start:stop]
         if region is not None:
-            start, stop = self._30k_ix(region=region)
+            start, stop = self._ix_30k(region=region)
             channel_slice = self.study.subject.region_chs[region]
             return h5_dataset[channel_slice, start:stop]
 
@@ -408,13 +411,13 @@ class Span(DataCatalog, abstracts.Span):
             warnings.warn(
                 "did not specify region but regions generated from separate data streams"
             )
-        output = []
+        data = []
         for region_name in self.study.subject.regions:
-            start, stop = self._30k_ix(region=region_name)
+            start, stop = self._ix_30k(region=region_name)
             channel_slice = self.study.subject.region_chs[region_name]
-            output.append(h5_dataset[channel_slice, start:stop])
-        truncate = min(x.shape[-1] for x in output)
-        output = np.row_stack([x[..., :truncate] for x in output])
+            data.append(h5_dataset[channel_slice, start:stop])
+        truncate = min(x.shape[-1] for x in data)
+        output = np.row_stack([x[..., :truncate] for x in data])
         return output
 
     def _neural(
@@ -523,7 +526,7 @@ class Span(DataCatalog, abstracts.Span):
         Returns:
             1D array of timestamps.
         """
-        start, stop = self._30k_ix(region=region)
+        start, stop = self._ix_30k(region=region)
         streams = self._stream(region=region)
         assert len(streams) == 1
         stream = streams[0]

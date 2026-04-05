@@ -1,0 +1,53 @@
+[tool.mypy]
+disable_error_code = ["import-untyped", "attr-defined"]
+
+[build-system]
+requires = ["uv_build >= 0.11.3, <0.12"]
+build-backend = "uv_build"
+
+[project]
+name = "bilab"
+version = "0.1.0"
+description = "A data API for the Brain Interfacing Laboratory"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy < 2.0.0",
+    "pandas",
+    "h5py",
+    "requests",
+    "urllib3",
+    "PyYAML",
+    "tqdm",
+    "cloudpickle",
+]
+license-files = ["LICENSE"]
+license = "GPL-2.0-or-later"
+authors = [{ name = "Brain Interfacing Laboratory" }]
+maintainers = [{ name = "Kenji Marshall", email = "kenjimar@pm.me" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3 :: Only",
+    "Intended Audience :: Science/Research",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://bil.stanford.edu/"
+Repository = "https://github.com/bil/data-python"
+
+[project.optional-dependencies]
+dev = [
+    "uv",
+    "pytest",
+    "pytest-mock",
+    "nbstripout",
+    "jupyter",
+    "notebook",
+    "pre-commit",
+    "matplotlib",
+]
+
+[tool.uv.build-backend]
+module-name = "bil"
+module-root = ""
