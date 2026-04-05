@@ -1,66 +1,61 @@
 #!/usr/bin/python3
 """
-Re-run notebooks, convert to markdown, strip.
+Re-run notebooks, convert to markdown using Quarto, strip outputs.
+Processes both 'docs' and 'demo' directories in-place.
 """
 
 import subprocess
 from pathlib import Path
 
 # --- Configuration ---
-SRC_DIR = Path("demo/ipynb")
-DST_DIR = Path("demo/md")
+# List the directories you want to scan
+TARGET_DIRS = [Path("docs"), Path("demo")]
 
 
 def convert_notebooks():
-    """Recursively find and convert notebooks."""
-    if not SRC_DIR.exists():
-        print(f"Error: Source directory {SRC_DIR} does not exist.")
-        return
+    """Recursively find and convert notebooks in target directories."""
 
-    # Ensure destination root exists
-    DST_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Walk through notebooks
-    for ipynb_path in SRC_DIR.rglob("*.ipynb"):
-        # Skip hidden files
-        if ipynb_path.name.startswith("."):
+    for target_dir in TARGET_DIRS:
+        if not target_dir.exists():
+            print(f"Skipping {target_dir}: Directory does not exist.")
             continue
 
-        # Determine relative path to mirror structure
-        rel_path = ipynb_path.relative_to(SRC_DIR)
+        print(f"\nScanning directory: {target_dir}/")
 
-        # Determine destination subdirectory
-        output_subdir = DST_DIR / rel_path.parent
-        output_subdir.mkdir(parents=True, exist_ok=True)
+        # Walk through notebooks
+        for ipynb_path in target_dir.rglob("*.ipynb"):
+            # Skip hidden files or checkpoint files
+            if ipynb_path.name.startswith(".") or "ipynb_checkpoints" in str(
+                ipynb_path
+            ):
+                continue
 
-        print(f"Converting: {rel_path} -> {DST_DIR / rel_path.with_suffix('.md')}")
+            print(f"Converting: {ipynb_path}")
 
-        # Convert to Markdown
-        cmd_convert = [
-            "jupyter",
-            "nbconvert",
-            "--to",
-            "markdown",
-            "--execute",
-            "--output-dir",
-            str(output_subdir),
-            str(ipynb_path),
-        ]
+            # Quarto
+            cmd_convert = [
+                "quarto",
+                "render",
+                str(ipynb_path),
+                "--to",
+                "gfm",
+                "--execute",
+            ]
 
-        try:
-            subprocess.run(cmd_convert, check=True, capture_output=True, text=True)
-        except subprocess.CalledProcessError as e:
-            print(f"Failed to convert {ipynb_path}:")
-            print(e.stderr)
-            continue
+            try:
+                subprocess.run(cmd_convert, check=True, capture_output=True, text=True)
+            except subprocess.CalledProcessError as e:
+                print(f"Failed to convert {ipynb_path}:")
+                print(e.stderr)
+                continue
 
-        # Strip outputs from source notebook
-        cmd_strip = ["nbstripout", str(ipynb_path)]
-        try:
-            subprocess.run(cmd_strip, check=True)
-        except subprocess.CalledProcessError as e:
-            print(f"Warning: nbstripout failed for {ipynb_path}")
-            raise e
+            # --- STRIP OUTPUTS ---
+            cmd_strip = ["nbstripout", str(ipynb_path)]
+            try:
+                subprocess.run(cmd_strip, check=True)
+            except subprocess.CalledProcessError as e:
+                print(f"Warning: nbstripout failed for {ipynb_path}")
+                raise e
 
 
 if __name__ == "__main__":

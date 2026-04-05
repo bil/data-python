@@ -38,7 +38,7 @@ Repository = "https://github.com/bil/data-python"
 
 [project.optional-dependencies]
 dev = [
-    "uv",
+    "quarto-cli",
     "pytest",
     "pytest-mock",
     "nbstripout",

@@ -58,7 +58,7 @@ def test_sdr_url_versioned_str():
 def test_study_invalid_id():
     """Confirm that an invalid study ID raises an appropriate error."""
     with pytest.raises(Exception):
-        get("invalid_id", quiet=True).initialize()
+        get("invalid_id", download_dir=TEST_DOWNLOAD_DIR, quiet=True).initialize()
 
 
 # --- formatS Tests (using a known small public session) ---
@@ -254,9 +254,9 @@ def test_study_cache_invalidation():
 
 def test_study_quiet_propagation():
     """Confirm quiet flag propagates to fetcher."""
-    study = get("U201130_01", quiet=True)
+    study = get("U201130_01", download_dir=TEST_DOWNLOAD_DIR, quiet=True)
     assert study.fetcher.quiet is True
-    study_loud = get("U201130_01", quiet=False)
+    study_loud = get("U201130_01", download_dir=TEST_DOWNLOAD_DIR, quiet=False)
     assert study_loud.fetcher.quiet is False
 
 
