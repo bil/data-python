@@ -1,6 +1,6 @@
 # BIL Data Python API
 
-This repository contains the public-facing Python API for accessing and analyzing neural data from the [Brain Interfacing Laboratory](https://bil.stanford.edu/). THe public deposition is at the [Stanford Digital Repository (SDR)](https://purl.stanford.edu/zz618yg1930).
+This repository contains the public-facing Python API for accessing and analyzing neural data from the [Brain Interfacing Laboratory](https://bil.stanford.edu/). The public deposition is at the [Stanford Digital Repository (SDR)](https://purl.stanford.edu/zz618yg1930).
 
 ## Installation
 
@@ -10,7 +10,7 @@ pip install bilab
 
 ## Data Availability
 
-The `bil` package is an API for interacting with [publically deposited data](https://purl.stanford.edu/zz618yg1930). In that directory, each recording session has its own identifier under the `data` directory. For instance, "U201130_01" is the first session by subject U on 2020-11-30.
+The `bil` package is an API for interacting with [publicly deposited data](https://purl.stanford.edu/zz618yg1930). In that directory, each recording session has its own identifier under the `data` directory. For instance, "U201130_01" is the first session by subject U on 2020-11-30.
 
 **Not all data types are available for all sessions.**
 
@@ -38,4 +38,24 @@ span = study.spans[0]
 # Retrieve LFP data from that period of time from the Utah array in motor cortex
 # This well get deposited in my_data/U201130_01
 lfp = span.lfp(region="m1")  # (96, T) ndarray
+```
+
+## Development
+
+For development, clone the repository and install the additional `dev` dependencies:
+
+```bash
+pip install -e ".[dev]"
+```
+
+Alternatively, `uv` can be used to pull the latest `uv.lock` into a virtual environment:
+
+```bash
+uv sync --all-extras
+```
+
+Finally, configure pre-commit hooks:
+
+```bash
+pre-commit install
 ```
