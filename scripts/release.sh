@@ -9,7 +9,7 @@ if [[ ! -f .env ]] then
     exit 1
 fi
 # push commits
-git push origin HEAD:main
+git push github HEAD:main
 # tag commit
 tag="v$(uv version --short)"
 git tag "$tag"
