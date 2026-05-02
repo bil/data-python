@@ -218,7 +218,7 @@ wheels = [
 
 [[package]]
 name = "bilab"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "cloudpickle" },
@@ -258,7 +258,7 @@ requires-dist = [
     { name = "matplotlib", marker = "extra == 'dev'" },
     { name = "nbstripout", marker = "extra == 'dev'" },
     { name = "notebook", marker = "extra == 'dev'" },
-    { name = "numpy", specifier = "<2.0.0" },
+    { name = "numpy" },
     { name = "pandas" },
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },

@@ -1,7 +1,7 @@
 """
-API implementation for data format B.
+API implementation for data format NPSL.
 
-This module handles flat HDF5 datasets common in format B recordings,
+This module handles flat HDF5 datasets common in format NPSL recordings,
 providing semantic access to neural rasters and cursor kinematics.
 """
 
@@ -10,6 +10,7 @@ from functools import cached_property
 from typing import Any, TYPE_CHECKING
 import numpy as np
 import h5py
+import pandas as pd
 
 from . import abstracts
 from .utils import subject
@@ -24,25 +25,8 @@ SUBJECTS: dict[str, subject.Subject] = {
 }
 
 
-def get_subject(study_id: str) -> subject.Subject:
-    """Retrieve Subject object based on the study ID's subject prefix.
-
-    Args:
-        study_id: Unique identifier for the study.
-
-    Returns:
-        The matched Subject object.
-    """
-    prefix = study_id[0]
-    return SUBJECTS.get(prefix, SUBJECTS["L"])
-
-
 class DataCatalog(abstracts.DataCatalog):
-    """Catalog of data access methods for format B.
-
-    These are high-level semantic methods for retrieving neural and
-    behavioral signals from a span of time.
-    """
+    """Catalog of data access methods for format NPSL."""
 
     def kinematics(self) -> np.ndarray:
         """Retrieve cursor kinematics.
@@ -65,15 +49,12 @@ class DataCatalog(abstracts.DataCatalog):
 
 
 class Span(DataCatalog, abstracts.Span):
-    """Span implementation for format B.
-
-    Handles slicing and transposing of flat HDF5 datasets.
-    """
+    """Span implementation for format NPSL."""
 
     study: StudyMixin
 
     def _get(self, h5_dataset: h5py.Dataset) -> np.ndarray:
-        """Slice and return data from an HDF5 dataset, transposing for standard shape.
+        """Slice and return data from an HDF5 dataset.
 
         Args:
             h5_dataset: The dataset to read from.
@@ -167,7 +148,7 @@ class Span(DataCatalog, abstracts.Span):
 
 
 class SpanSet(DataCatalog, abstracts.SpanSet):
-    """Collection of Span objects for format B."""
+    """Collection of Span objects for format NPSL."""
 
     @property
     def span_cls(self) -> type[Span]:
@@ -186,11 +167,11 @@ class SpanSet(DataCatalog, abstracts.SpanSet):
 
 
 class SpanArray(abstracts.ArrayMixin, SpanSet):
-    """Array representation of format B Spans."""
+    """Array representation of format NPSL Spans."""
 
 
 class StudyBase(abstracts.HeadH5Study):
-    """Base class for format B studies."""
+    """Base class for format NPSL studies."""
 
     data_paths: dict[str, list[str]] = {
         "head": ["{run}.h5"],
@@ -208,7 +189,10 @@ class StudyBase(abstracts.HeadH5Study):
             **kwargs: Additional options.
         """
         super().__init__(study_id, download_dir, quiet=quiet, **kwargs)
-        self.subject = get_subject(self.study_id)
+        prefix = study_id[0]
+        if prefix not in SUBJECTS:
+            raise ValueError(f"Cannot find subject with name {prefix}")
+        self.subject = SUBJECTS[prefix]
 
     @cached_property
     def tlen(self) -> int:
@@ -234,15 +218,16 @@ class StudyBase(abstracts.HeadH5Study):
         """Initialize metadata by parsing the HDF5 head file."""
         if self._df is not None:
             return
-        # build new df from head file attributes/datasets
+        if self.fetcher.check_file_exists("df/trial.csv"):
+            path = self.fetcher.get_file("df/trial.csv")
+            dataframe = pd.read_csv(path)
+            dataframe = dataframe.sort_values(by="number").reset_index(drop=True)
+            self.df = dataframe
+            return
         df = b_helpers.df_from_h5(self.head, self.study_id)
         df = df.sort_values(by="number").reset_index(drop=True)
         self.df = df
 
 
 class Study(abstracts.PublicMixin, StudyBase, SpanSet):
-    """Implementation of Study object for format B using HTTPS fetching.
-
-    This class handles the fetching and accessing of flat HDF5 data files
-    from the format B remote repository.
-    """
+    """Implementation of Study object for format NPSL using HTTPS fetching."""

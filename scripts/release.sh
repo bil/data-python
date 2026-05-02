@@ -1,4 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
+if [[ -n "$(git status --porcelain)" ]] then
+    echo "Nonempty status"
+    exit 1
+fi
 # Run AFTER bumping version
 git tag "v$(uv version --short)"
 git push --tags

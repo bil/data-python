@@ -1,5 +1,5 @@
 """
-API implementation for data format A.
+API implementation for data format S.
 """
 
 from __future__ import annotations
@@ -56,24 +56,8 @@ SUBJECTS: dict[str, subject.Subject] = {
 }
 
 
-def get_subject(study_id: str) -> subject.Subject:
-    """Retrieve Subject object based on the study ID's subject prefix.
-
-    Args:
-        study_id: Unique identifier for the study.
-
-    Returns:
-        The matched Subject object.
-    """
-    return SUBJECTS[study_id[0]]
-
-
 class DataCatalog(abstracts.DataCatalog):
-    """Catalog of high-level semantic data access methods for format A.
-
-    These are high-level semantic methods for retrieving neural and
-    behavioral signals from a span of time.
-    """
+    """Catalog of high-level semantic data access methods for format S."""
 
     def lfp(self, region: str | None = None) -> np.ndarray:
         """Retrieve Local Field Potential (LFP) data.
@@ -209,7 +193,7 @@ class DataCatalog(abstracts.DataCatalog):
         return self._return_data("kinematics")
 
     def timestamp(self, region: str | None = None) -> np.ndarray:
-        """Retrieve precise hardware timestamps.
+        """Retrieve hardware timestamps.
 
         Args:
             region: Semantic brain region.
@@ -256,9 +240,9 @@ class DataCatalog(abstracts.DataCatalog):
 
 
 class Span(DataCatalog, abstracts.Span):
-    """Span implementation for format A.
+    """Span implementation for format S.
 
-    Provides specialized methods for retrieving and indexing into format A
+    Provides methods for retrieving and indexing into format S
     neural data and behavioral signals.
     """
 
@@ -656,7 +640,7 @@ class Span(DataCatalog, abstracts.Span):
 
 
 class SpanSet(DataCatalog, abstracts.SpanSet):
-    """Collection of Span objects for format A."""
+    """Collection of Span objects for format S."""
 
     @property
     def span_cls(self) -> type[Span]:
@@ -675,11 +659,11 @@ class SpanSet(DataCatalog, abstracts.SpanSet):
 
 
 class SpanArray(abstracts.ArrayMixin, SpanSet):
-    """Array representation of format A Spans."""
+    """Array representation of format S Spans."""
 
 
 class StudyBase(abstracts.HeadH5Study):
-    """Base Study class for format A datasets."""
+    """Base Study class for format S datasets."""
 
     data_paths: dict[str, list[str]] = {
         "head": ["{run}.h5"],
@@ -710,7 +694,10 @@ class StudyBase(abstracts.HeadH5Study):
             **kwargs: Additional options.
         """
         super().__init__(study_id, download_dir, quiet=quiet, **kwargs)
-        self.subject = get_subject(self.study_id)
+        prefix = study_id[0]
+        if prefix not in SUBJECTS:
+            raise ValueError(f"Cannot find subject with name {prefix}")
+        self.subject = SUBJECTS[prefix]
         self.has_raw_chs: set[int] = set()
 
     @cached_property
@@ -753,7 +740,7 @@ class StudyBase(abstracts.HeadH5Study):
 
 
 class Study(abstracts.PublicMixin, StudyBase, SpanSet):
-    """Study object for format A using HTTPS fetching."""
+    """Study object for format S using HTTPS fetching."""
 
     def _init_meta(self) -> None:
         """Fetch and load trial metadata."""

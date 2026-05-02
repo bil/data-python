@@ -688,7 +688,7 @@ class PublicMixin:
         deposition_version: int | str | None = None,
         **kwargs: Any,
     ) -> None:
-        """Initialize format A Study with HTTPS fetching.
+        """Initialize format S Study with HTTPS fetching.
 
         Args:
             study_id: Session identifier.

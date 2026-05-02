@@ -1,5 +1,5 @@
 """
-Helper functions for accessing data format B.
+Helper functions for accessing data format NPSL.
 """
 
 from __future__ import annotations
@@ -87,7 +87,7 @@ def angle_helper(row: pd.Series, tol: float = 1e-6) -> str:
 
 
 def df_from_h5(h5_file: h5py.File, run_id: str) -> pd.DataFrame:
-    """Parse format B HDF5 head file into a formatted trial DataFrame.
+    """Parse format NPSL HDF5 head file into a formatted trial DataFrame.
 
     Args:
         h5_file: The open HDF5 file handle.
