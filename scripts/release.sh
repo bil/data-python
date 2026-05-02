@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 if [[ -n "$(git status --porcelain)" ]] then
     echo "Nonempty status"
     exit 1
