@@ -402,7 +402,7 @@ class Span(DataCatalog, abstracts.Span):
             channel_slice = self.study.subject.region_chs[region_name]
             data.append(h5_dataset[channel_slice, start:stop])
         truncate = min(x.shape[-1] for x in data)
-        output = np.row_stack([x[..., :truncate] for x in data])
+        output = np.vstack([x[..., :truncate] for x in data])
         return output
 
     def _neural(
