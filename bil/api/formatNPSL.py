@@ -202,7 +202,7 @@ class StudyBase(abstracts.HeadH5Study):
         Returns:
             Duration in ms.
         """
-        return int(self.head["counter"].shape[0])
+        return int(self.head["spikeRaster"].shape[0])
 
     def by_time(self, key: int | slice) -> Span:
         """Index by relative ms time.
@@ -220,7 +220,7 @@ class StudyBase(abstracts.HeadH5Study):
         if self._df is not None:
             return
 
-        path = self.fetcher.get_file("trial.csv")
+        path = self.fetcher.get_file("df/trial.csv")
         dataframe = pd.read_csv(path)
         dataframe = dataframe.sort_values(by="number").reset_index(drop=True)
         self.df = dataframe
