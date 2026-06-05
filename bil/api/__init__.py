@@ -4,10 +4,7 @@ BIL data API.
 
 from __future__ import annotations
 
-from typing import Any
-from . import abstracts
-from . import formatS
-from . import formatNPSL
+from . import abstracts, formatNPSL, formatS
 from .utils import fetch
 
 IMPLEMENTATIONS: dict[str, type[formatS.Study] | type[formatNPSL.Study]] = {

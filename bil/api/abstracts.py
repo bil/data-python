@@ -7,14 +7,15 @@ from __future__ import annotations
 import functools
 from abc import ABC, abstractmethod
 from functools import cached_property
-from typing import Any, Callable, Iterable, TypeVar
 from pathlib import Path
+from typing import Any, Callable, Iterable, TypeVar
 
+import h5py
 import numpy as np
 import pandas as pd
-import h5py
 
 from .utils import fetch
+from .utils.subject import Subject
 
 SDR_VERSIONED_URL: str = (
     "https://stacks.stanford.edu/v{version}/file/zz618yg1930/version/{version}/data"
@@ -219,13 +220,19 @@ class Span(ABC):
         Returns:
             New aligned span.
         """
+        if t_before == 0 and t_after == 0:
+            raise ValueError("Must specify non-zero t_before or t_after!")
+        if t_before < 0:
+            raise ValueError("Cannot have negative t_before")
+        if t_after < 0:
+            raise ValueError("Cannot have negative t_after")
         start = time_ms - t_before
-        end = time_ms + t_after + 1
+        end = time_ms + t_after
 
         span = self
         if self.start + end > self.stop:
             span = span.extend(t_after=self.start + end - self.stop)
-            end = -1
+            end = -1  # go to end of span
         if start < 0:
             span = span.extend(t_before=abs(start))
             if end != -1:
@@ -280,9 +287,7 @@ class SpanSet:
     def spanarray_cls(self) -> type["SpanSet"]:
         """SpanArray instantiation class."""
 
-    def __init__(
-        self, spans: list[Span], **kwargs: Any  # pylint: disable=unused-argument
-    ) -> None:
+    def __init__(self, spans: list[Span], **kwargs: Any) -> None:
         """Initialize SpanSet.
 
         Args:
@@ -412,7 +417,12 @@ class SpanSet:
                 target_t = list(time_ms)[index]
             else:
                 target_t = time_ms
-            span_arr.append(span.around(int(target_t), t_before, t_after))
+            try:
+                # Check to make sure we are number-like
+                target_t = int(str(target_t))
+            except Exception as e:
+                raise ValueError from e
+            span_arr.append(span.around(target_t, t_before, t_after))
         return self._make_spanarray(span_arr)
 
     def map(self, func: Callable, *args: Any, **kwargs: Any) -> list[Any]:
@@ -449,8 +459,7 @@ class StudyMixin(ABC):
         quiet: Verbosity flag.
     """
 
-    # For linting purposes!
-    # span_cls: type[Span]
+    head: str
 
     def __init__(
         self, study_id: str, download_dir: str, quiet: bool = False, **kwargs: Any
@@ -505,7 +514,7 @@ class StudyMixin(ABC):
         """
         if self.df is None:
             return self.by_time(key)
-        return super().__getitem__(key)  # type: ignore[misc]
+        return super().__getitem__(key)  # ty: ignore[unresolved-attribute]
 
     @cached_property
     @abstractmethod
@@ -573,6 +582,7 @@ class HeadH5Study(StudyMixin):
     """Base class for studies with remote HDF5 head files."""
 
     data_paths: dict[str, list[str]] = {}
+    subject: Subject
 
     def __init__(
         self,
@@ -664,7 +674,7 @@ class HeadH5Study(StudyMixin):
         """
         start = int(row["ms_start"])
         stop = int(row["ms_end"])
-        return self.span_cls(
+        return self.span_cls(  # ty: ignore[unresolved-attribute]
             start=start, stop=stop, study_id=self.study_id, study=self, metadata=row
         )
 
@@ -699,17 +709,21 @@ class PublicMixin:
         """
         self.deposition_version = deposition_version
         super().__init__(
-            study_id=study_id,
-            download_dir=f"{download_dir}/{study_id}",
-            quiet=quiet,
-            spans=(),
+            study_id=study_id,  # ty: ignore[unknown-argument]
+            download_dir=f"{download_dir}/{study_id}",  # ty: ignore[unknown-argument]
+            quiet=quiet,  # ty: ignore[unknown-argument]
+            spans=(),  # ty: ignore[unknown-argument]
             **kwargs,
-        )  # type: ignore[call-arg]
+        )
 
     @cached_property
     def fetcher(self) -> fetch.FetcherHTTPS:
         """HTTPS fetch manager."""
-        return fetch.FetcherHTTPS(self.url, self.download_dir, quiet=self.quiet)
+        return fetch.FetcherHTTPS(
+            self.url,  # ty: ignore[unresolved-attribute]
+            self.download_dir,  # ty: ignore[unresolved-attribute]
+            quiet=self.quiet,  # ty: ignore[unresolved-attribute]
+        )
 
     @property
     def _default_url(self) -> str:
@@ -735,7 +749,7 @@ class ArrayMixin:
             raise ValueError("SpanArray requires spans of the same length")
 
         # init
-        super().__init__(spans=spans_list, *args, **kwargs)  # type: ignore[call-arg]
+        super().__init__(spans=spans_list, *args, **kwargs)  # ty: ignore[unknown-argument]
 
     def _wrap(self, func: str, *args: Any, **kwargs: Any) -> np.ndarray:
         """Wrap results into numpy array.
@@ -748,7 +762,7 @@ class ArrayMixin:
         Returns:
             Numpy array of results.
         """
-        return np.array(super()._wrap(func, *args, **kwargs))  # type: ignore[misc]
+        return np.array(super()._wrap(func, *args, **kwargs))  # ty: ignore[unresolved-attribute]
 
 
 class DataCatalog:

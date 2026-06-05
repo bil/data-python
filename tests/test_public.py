@@ -119,7 +119,7 @@ def test_span_around(study_s):
     span = study_s.spans[0]
     center = (span.stop - span.start) // 2
     new_span = span.around(center, 100, 100)
-    assert new_span.stop - new_span.start == 201
+    assert new_span.stop - new_span.start == 200
 
 
 def test_spanset_map(study_s):
@@ -146,7 +146,6 @@ def test_pickle_utils():
     """Test custom pickling logic."""
 
     class MockStudy(StudyMixin):
-
         has = set()
 
         @property
@@ -178,6 +177,7 @@ def test_pickle_utils():
     data = bil_pickle.pickle_proof(data)
     assert not data.has
     pickled = bil_pickle.pickle_down(data)
+    assert isinstance(pickled, bytes)
     unpickled = bil_pickle.pickle_up(pickled)
     assert unpickled.study_id == data.study_id
 

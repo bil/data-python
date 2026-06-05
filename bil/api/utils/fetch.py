@@ -357,6 +357,6 @@ class FetcherRclone(Fetcher):
         except subprocess.CalledProcessError as err:
             if not self.quiet:
                 print(f"Rclone bulk copy failed: {err}")
-            raise err
+            raise FileNotFoundError(f"Rclone failed to copy: {files}") from err
 
         return [str(self.download_dir / f) for f in files]

@@ -6,18 +6,19 @@ providing semantic access to neural rasters and cursor kinematics.
 """
 
 from __future__ import annotations
+
 from functools import cached_property
-from typing import Any, TYPE_CHECKING
-import numpy as np
+from typing import TYPE_CHECKING, Any
+
 import h5py
+import numpy as np
 import pandas as pd
 
 from . import abstracts
 from .utils import subject
-from .utils import b_helpers
 
 if TYPE_CHECKING:
-    from .abstracts import StudyMixin
+    from .abstracts import HeadH5Study
 
 SUBJECTS: dict[str, subject.Subject] = {
     "L": subject.Subject("L", [subject.UTAH], ["m1"]),
@@ -51,7 +52,7 @@ class DataCatalog(abstracts.DataCatalog):
 class Span(DataCatalog, abstracts.Span):
     """Span implementation for format NPSL."""
 
-    study: StudyMixin
+    study: HeadH5Study
 
     def _get(self, h5_dataset: h5py.Dataset) -> np.ndarray:
         """Slice and return data from an HDF5 dataset.
@@ -85,9 +86,9 @@ class Span(DataCatalog, abstracts.Span):
             else:
                 suffixes = [""]  # Default fallback
         elif region.lower() in ["m1", "pmd"]:
-            assert (
-                region in self.study.subject.regions
-            ), f"subject {self.study.subject.name} does not have region {region}!"
+            assert region in self.study.subject.regions, (
+                f"subject {self.study.subject.name} does not have region {region}!"
+            )
             # Find index of region to determine suffix
             idx = self.study.subject.regions.index(region.lower())
             suffixes = ["" if idx == 0 else str(idx + 1)]
@@ -218,15 +219,12 @@ class StudyBase(abstracts.HeadH5Study):
         """Initialize metadata by parsing the HDF5 head file."""
         if self._df is not None:
             return
-        if self.fetcher.check_file_exists("df/trial.csv"):
-            path = self.fetcher.get_file("df/trial.csv")
-            dataframe = pd.read_csv(path)
-            dataframe = dataframe.sort_values(by="number").reset_index(drop=True)
-            self.df = dataframe
-            return
-        df = b_helpers.df_from_h5(self.head, self.study_id)
-        df = df.sort_values(by="number").reset_index(drop=True)
-        self.df = df
+
+        path = self.fetcher.get_file("trial.csv")
+        dataframe = pd.read_csv(path)
+        dataframe = dataframe.sort_values(by="number").reset_index(drop=True)
+        self.df = dataframe
+        return
 
 
 class Study(abstracts.PublicMixin, StudyBase, SpanSet):

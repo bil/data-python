@@ -3,23 +3,24 @@ API implementation for data format S.
 """
 
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING
+
 import sqlite3
 import warnings
 from functools import cached_property
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
-import yaml
+import h5py
 import numpy as np
 import pandas as pd
-import h5py
+import yaml
 
 from . import abstracts
 from .abstracts import needs_data
 from .utils import subject
 
 if TYPE_CHECKING:
-    from .abstracts import StudyMixin
+    from .abstracts import HeadH5Study
 
 # Channel mapping for Utah arrays, accounting for spatial orientation
 U_M1_MAP = subject.UTAH_MAP.copy()[::-1, ::-1].T
@@ -246,7 +247,7 @@ class Span(DataCatalog, abstracts.Span):
     neural data and behavioral signals.
     """
 
-    study: StudyMixin
+    study: HeadH5Study
 
     def _stream(self, region: str | None = None) -> np.ndarray:
         """Identify relevant neural data streams.
@@ -746,10 +747,11 @@ class Study(abstracts.PublicMixin, StudyBase, SpanSet):
         """Fetch and load trial metadata."""
         if self._df is not None:
             return
-        assert self.fetcher.check_file_exists(
-            "df/trial.df.xz"
-        ), f"trial information not available; does the dataset {self.study_id} exist?"
+        assert self.fetcher.check_file_exists("df/trial.df.xz"), (
+            f"trial information not available; does the dataset {self.study_id} exist?"
+        )
         path = self.fetcher.get_file("df/trial.df.xz")
         dataframe = pd.read_pickle(path)
+        dataframe = pd.DataFrame(dataframe)
         dataframe = dataframe.sort_values(by="number").reset_index(drop=True)
         self.df = dataframe
